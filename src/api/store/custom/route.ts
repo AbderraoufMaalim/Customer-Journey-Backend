@@ -11,11 +11,14 @@ export const GET = (req: MedusaRequest, res: MedusaResponse) => {
 
 export const POST = async (req: MedusaRequest, res: MedusaResponse) => {
   const client = new Client();
-  const handle = client.workflow.getHandle("workflow-54321");
+  const workflowId:string = (req.body as { workflowId: string}).workflowId;
+  const handle = client.workflow.getHandle(workflowId);
   await handle.signal(productRecommendationSignal, {
     targetedProduct: (req.body as { targetedProduct: string }).targetedProduct,
     productType: (req.body as { productType: string }).productType,
+    email:(req.body as { email: string }).email
   });
+  console.log('this is the name from the request ',typeof(req.body as { workflowId: string}).workflowId , (req.body as { email: string }).email,'---',req.body , '==============================')
   res.json({
     message: "[POST] Hello world!",
   });

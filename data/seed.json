@@ -24,6 +24,13 @@
         "manual"
       ],
       "countries": [
+        "gb",
+        "de",
+        "dk",
+        "se",
+        "fr",
+        "es",
+        "it"
       ]
     },
     {
@@ -38,6 +45,8 @@
         "manual"
       ],
       "countries": [
+        "us",
+        "ca"
       ]
     }
   ],

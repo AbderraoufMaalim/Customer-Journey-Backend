@@ -17,11 +17,11 @@ export async function firstConnectionWorkflow(name: string, socket: any): Promis
   await inviteTosubscribe(name, socket);
 
   let emailSent = false;
-  setHandler(productRecommendationSignal, async ({ targetedProduct, productType }: JoinInput) => {
-    await recommendProducts({targetedProduct, productType});
+  setHandler(productRecommendationSignal, async ({ targetedProduct, productType, email }: JoinInput) => {
+    await recommendProducts({targetedProduct, productType, email});
     emailSent = true;
   });
-  await wf.condition(() => emailSent === true, "10 minutes");
+  await wf.condition(() => emailSent === true, "2 minutes");
   return " ";
 }
 // @@@SNIPEND

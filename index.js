@@ -2,7 +2,7 @@ const express = require("express");
 const { GracefulShutdownServer } = require("medusa-core-utils");
 const { Server } = require("socket.io");
 const { NativeConnection, Worker } = require("@temporalio/worker");
-const { Connection, Client } = require("@temporalio/client");
+const { Connection, Client, WorkflowClient  } = require("@temporalio/client");
 const activities = require("./dist/temporal/activities");
 const { firstConnectionWorkflow } = require("./dist/temporal/workflows");
 const { nanoid } = require("nanoid");
@@ -46,7 +46,48 @@ const loaders = require("@medusajs/medusa/dist/loaders/index").default;
       activities.set_io(io);
 
       io.on("connection", async (socket) => {
+        let handle
         console.log("A user has connected");
+
+        socket.on('check-workflow-id', async(payload) => {
+          // console.log(payload,'null here ?')
+
+          if(!payload){
+            const workflowId = "workflow-" + nanoid()
+            
+            socket.emit('set-workflow-id', workflowId)
+
+            try {
+              const clientConnection = await Connection.connect({
+                address: "127.0.0.1:7233",
+              });
+    
+    
+              const client = new Client({
+                clientConnection,
+                // namespace: 'foo.bar', // connects to 'default' namespace if not specified
+              });
+
+              handle = await client.workflow.start(firstConnectionWorkflow, {
+                taskQueue: "hello-world",
+                // type inference works! args: [name: string]
+                args: ["Temporals", socket.id],
+                // in practice, use a meaningful business ID, like customerId or transactionId
+                workflowId: workflowId,
+                //workflowId: "workflow-" + nanoid(),
+              });
+              console.log(`Started workflow ${handle.workflowId}`);
+    
+              // optional: wait for client result
+              console.log(await handle.result());
+            } catch (error) {
+              
+            }
+            
+
+          }
+
+        })
 
         // const sth = await CustomerRepository.findOne({
         //   where: {
@@ -56,27 +97,9 @@ const loaders = require("@medusajs/medusa/dist/loaders/index").default;
 
         // console.log("hopa ++==++==+++===++", sth);
         try {
-          const clientConnection = await Connection.connect({
-            address: "127.0.0.1:7233",
-          });
+          
 
-          const client = new Client({
-            clientConnection,
-            // namespace: 'foo.bar', // connects to 'default' namespace if not specified
-          });
-
-          const handle = await client.workflow.start(firstConnectionWorkflow, {
-            taskQueue: "hello-world",
-            // type inference works! args: [name: string]
-            args: ["Temporals", socket.id],
-            // in practice, use a meaningful business ID, like customerId or transactionId
-            workflowId: "workflow-54321",
-            //workflowId: "workflow-" + nanoid(),
-          });
-          console.log(`Started workflow ${handle.workflowId}`);
-
-          // optional: wait for client result
-          console.log(await handle.result()); // Hello, Temporal!
+          // Hello, Temporal!
         } catch (e) {
           console.log(e);
         }
