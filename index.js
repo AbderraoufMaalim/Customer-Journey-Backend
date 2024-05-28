@@ -2,10 +2,10 @@ const express = require("express");
 const { GracefulShutdownServer } = require("medusa-core-utils");
 const { Server } = require("socket.io");
 const { NativeConnection, Worker } = require("@temporalio/worker");
-const { Connection, Client, WorkflowClient  } = require("@temporalio/client");
+const { Connection, Client, WorkflowClient } = require("@temporalio/client");
 const activities = require("./dist/temporal/activities");
-const { firstConnectionWorkflow } = require("./dist/temporal/workflows");
-const { nanoid } = require("nanoid");
+
+const socketIoService = require("./dist/socketIo/index");
 
 // const CustomerRepository = require("./dist/repositories/customer");
 // const {
@@ -45,64 +45,59 @@ const loaders = require("@medusajs/medusa/dist/loaders/index").default;
 
       activities.set_io(io);
 
+      const clientConnection = await Connection.connect({
+        address: "127.0.0.1:7233",
+      });
+      const client = new Client({
+        clientConnection,
+      });
+
       io.on("connection", async (socket) => {
-        let handle
+        let handle;
+        // console.log(dataSource, "this is data source");
+        // console.log(Customer, "this is customer");
+
+        // const CustomerRepository = dataSource.getRepository(Customer);
+
         console.log("A user has connected");
 
-        socket.on('check-workflow-id', async(payload) => {
+        socket.on("check-workflow-id", async (payload) => {
           // console.log(payload,'null here ?')
+          // try {
+          //   const p =
+          //     await client.workflowService.getWorkflowExecutionHistoryReverse({
+          //       namespace: "default",
+          //       execution: {
+          //         workflowId: "workflow-J0Lik4ZQtMe0PfQSQoF5_",
+          //       },
+          //     });
 
-          if(!payload){
-            const workflowId = "workflow-" + nanoid()
-            
-            socket.emit('set-workflow-id', workflowId)
+          //   if (p.history.events[0].workflowExecutionCompletedEventAttributes) {
+          //     console.log("yesssssssssssssssssssssssssssssssssss");
+          //   } else {
+          //     console.log("nopooooooooooooooooooooooooooooooo");
+          //   }
+          // } catch (error) {
+          //   console.log(error);
+          // }
+          // if (!payload) {
+          //   const workflowId = "workflow-" + nanoid();
+          //   socket.emit("set-workflow-id", { workflowId });
 
-            try {
-              const clientConnection = await Connection.connect({
-                address: "127.0.0.1:7233",
-              });
-    
-    
-              const client = new Client({
-                clientConnection,
-                // namespace: 'foo.bar', // connects to 'default' namespace if not specified
-              });
+          handle = socketIoService.checkWorkflowId(payload, client, socket);
+        });
 
-              handle = await client.workflow.start(firstConnectionWorkflow, {
-                taskQueue: "hello-world",
-                // type inference works! args: [name: string]
-                args: ["Temporals", socket.id],
-                // in practice, use a meaningful business ID, like customerId or transactionId
-                workflowId: workflowId,
-                //workflowId: "workflow-" + nanoid(),
-              });
-              console.log(`Started workflow ${handle.workflowId}`);
-    
-              // optional: wait for client result
-              console.log(await handle.result());
-            } catch (error) {
-              
-            }
-            
+        socket.on("get-customer-workflow-id", async (payload) => {
+          handle = socketIoService.getCustomerWorkflowId(
+            payload.email,
+            client,
+            socket
+          );
+        });
 
-          }
-
-        })
-
-        // const sth = await CustomerRepository.findOne({
-        //   where: {
-        //     email: "d@gmail.com",
-        //   },
-        // });
-
-        // console.log("hopa ++==++==+++===++", sth);
-        try {
-          
-
-          // Hello, Temporal!
-        } catch (e) {
-          console.log(e);
-        }
+        socket.on("get-new-workflow-id", async () => {
+          handle = socketIoService.getNewWorkflowId(socket, client);
+        });
       });
 
       try {

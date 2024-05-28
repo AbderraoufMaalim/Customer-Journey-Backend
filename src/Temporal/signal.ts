@@ -1,9 +1,15 @@
-import { defineSignal } from '@temporalio/workflow';
+import { defineSignal } from "@temporalio/workflow";
 
 export interface JoinInput {
-    targetedProduct: string | null;
-    productType: string | null;
-    email: string | null
+  targetedProduct: string | null;
+  productType: string | null;
+  email: string | null;
 }
 
-export const productRecommendationSignal = defineSignal<[JoinInput]>('join');
+export const productRecommendationSignal = defineSignal<[JoinInput]>("join");
+
+export interface SocketId {
+  changedSocketId: string;
+}
+
+export const socketChangedSignal = defineSignal<[SocketId]>("socketId");

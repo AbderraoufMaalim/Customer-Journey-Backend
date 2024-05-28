@@ -14,21 +14,20 @@ export async function inviteTosubscribe(
   name: string,
   socket: any
 ): Promise<string> {
-  
-  console.log('this is customer', Customer);
-  const sth = dataSource.getRepository(Customer)
-  const sthm = await sth.findOne({where: { 
-    email: 'h@gmail.com'
-  }})
-
-  console.log('this is sthm' , sthm)
   io.to(socket).emit("inviteTosubscribe");
   return `Hello , ${socket}!`;
 }
-async function sendMail({ targetedProduct, productType, email, products }: {targetedProduct: string | null;
+async function sendMail({
+  targetedProduct,
+  productType,
+  email,
+  products,
+}: {
+  targetedProduct: string | null;
   productType: string | null;
-  email: string | null,
-  products: Product[]| null}) {
+  email: string | null;
+  products: Product[] | null;
+}) {
   var transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -41,25 +40,24 @@ async function sendMail({ targetedProduct, productType, email, products }: {targ
     from: "graristar@gmail.com",
     to: email,
     subject: "We have recommended Products for you",
-    // text: `Recommended Products : 
+    // text: `Recommended Products :
     //       ${products.map((product) => {return product.title})}
     // `,
-    html:`
+    html: `
     <h1>Bonjour,</h1>
 
-<p>Merci d'avoir choisi notre site pour votre recherche de vélos. Voici quelques recommandations basées sur la catégorie que vous avez sélectionnée :</p>
+      <p>Merci d'avoir choisi notre site pour votre recherche de vélos. Voici quelques recommandations basées sur la catégorie que vous avez sélectionnée :</p>
 
-${products.map((product)=>{
-  return`<a href='http://localhost:8080/us/products/${product.handle}'>${product.title}</a>`
-})}
+    ${products.map((product) => {
+      return `<a href='http://localhost:8080/us/products/${product.handle}'>${product.title}</a>`;
+    })}
 
 
-<p>Si vous avez des questions, n'hésitez pas à nous contacter</p>.
+    <p>Si vous avez des questions, n'hésitez pas à nous contacter</p>.
 
-<p>Cordialement,</p>
-<p>L'équipe de vente de vélos</p>`
+    <p>Cordialement,</p>
+    <p>L'équipe de vente de vélos</p>`,
   };
-  console.log("11111111111111111111111111111111111111111111111111");
 
   await transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
@@ -68,33 +66,36 @@ ${products.map((product)=>{
       console.log("Email sent: " + info.response);
     }
   });
-  console.log("2222222222222222222222222222222222222222222222222");
 }
 export async function recommendProducts({
   targetedProduct,
   productType,
-  email, 
+  email,
 }: JoinInput): Promise<string> {
   const collectionRepo = dataSource.getRepository(ProductCollection);
-  const productRepo = dataSource.getRepository(Product)
-  let collecitonId
-  if(targetedProduct === 'BIKE'){
-    collecitonId = await collectionRepo.findOne({where: { 
-      title: productType
-    }})
-  }else{
-    collecitonId = await collectionRepo.findOne({where: { 
-      title: targetedProduct
-    }})
+  const productRepo = dataSource.getRepository(Product);
+  let collecitonId;
+  if (targetedProduct === "BIKE") {
+    collecitonId = await collectionRepo.findOne({
+      where: {
+        title: productType,
+      },
+    });
+  } else {
+    collecitonId = await collectionRepo.findOne({
+      where: {
+        title: targetedProduct,
+      },
+    });
   }
 
-  const products = await productRepo.find({where: {
-    collection_id: collecitonId.id,
-  },take:4})
+  const products = await productRepo.find({
+    where: {
+      collection_id: collecitonId.id,
+    },
+    take: 4,
+  });
 
-
-  console.log(products)
-  
   await sendMail({ targetedProduct, productType, email, products });
   return ` `;
 }

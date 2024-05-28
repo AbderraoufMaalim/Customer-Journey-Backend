@@ -12,27 +12,6 @@ export async function GET(req: MedusaRequest, res: MedusaResponse) {
 
   const status = await onboardingService.retrieve();
 
-  const customerService: CustomerService = req.scope.resolve("customerService");
-
-  console.log(
-    req.scope.resolve("customerService"),
-    "=========================================",
-    req.scope.resolve("onboardingService")
-  );
-
-  const ad = CustomerRepository;
-  const b = await ad.findOne({
-    where: {
-      email: "d@gmail.com",
-    },
-  });
-
-  // const abt = new CustomerService({CustomerRepository,EventBusService,})
-
-  // const sth = await customerService.getMessage();
-
-  console.log(b, "this is sth ================");
-
   res.status(200).json({ status });
 }
 
