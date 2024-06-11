@@ -98,6 +98,14 @@ const loaders = require("@medusajs/medusa/dist/loaders/index").default;
         socket.on("get-new-workflow-id", async () => {
           handle = socketIoService.getNewWorkflowId(socket, client);
         });
+
+        socket.on("order-placed", async (payload) => {
+          handle = socketIoService.orderPlaced(
+            payload.cartId,
+            payload.workflowId,
+            client
+          );
+        });
       });
 
       try {

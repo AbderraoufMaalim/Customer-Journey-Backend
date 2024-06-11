@@ -10,11 +10,16 @@ import {
   productRecommendationSignal,
   SocketId,
   socketChangedSignal,
+  OrderPlaced,
+  orderPlacedSignal,
 } from "./signal";
 
-const { inviteTosubscribe, recommendProducts } = proxyActivities<
-  typeof activities
->({
+const {
+  inviteTosubscribe,
+  recommendProducts,
+  recommendProductsWithLowerPrice,
+  checkOrderPlaced,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
 
@@ -33,12 +38,25 @@ export async function firstConnectionWorkflow(
   await inviteTosubscribe(name, socketId);
 
   let emailSent = false;
+  let didBuy = false;
+
+  let recommendedProducts: { id: string }[];
+  let recommendedProductsWithLowerPrice: { id: string }[];
   STEP = "intention";
+
+  let workflowProps: JoinInput = {
+    targetedProduct: null,
+    productType: null,
+    email: null,
+  };
 
   setHandler(
     productRecommendationSignal,
     async ({ targetedProduct, productType, email }: JoinInput) => {
-      await recommendProducts({ targetedProduct, productType, email });
+      workflowProps.targetedProduct = targetedProduct;
+      workflowProps.productType = productType;
+      workflowProps.email = email;
+      recommendedProducts = await recommendProducts(workflowProps);
       emailSent = true;
       STEP = "trying";
     }
@@ -46,6 +64,24 @@ export async function firstConnectionWorkflow(
   await wf.condition(() => emailSent === true, "2 minutes");
 
   if (emailSent) {
+    await sleep("10 seconds");
+    recommendedProductsWithLowerPrice = await recommendProductsWithLowerPrice(
+      workflowProps
+    );
+
+    recommendedProducts = recommendedProducts.concat(
+      recommendedProductsWithLowerPrice
+    );
+
+    setHandler(orderPlacedSignal, async ({ cartId }: OrderPlaced) => {
+      didBuy = await checkOrderPlaced(cartId, recommendedProducts);
+
+      if (didBuy) {
+        STEP = "purchase";
+      }
+    });
+
+    await wf.condition(() => didBuy === true, "2 hours");
   }
 
   return " ";

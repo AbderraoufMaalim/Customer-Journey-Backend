@@ -13,3 +13,9 @@ export interface SocketId {
 }
 
 export const socketChangedSignal = defineSignal<[SocketId]>("socketId");
+
+export interface OrderPlaced {
+  cartId: string;
+}
+
+export const orderPlacedSignal = defineSignal<[OrderPlaced]>("orderPlaced");
