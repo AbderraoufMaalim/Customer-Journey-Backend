@@ -63,23 +63,26 @@ export async function firstConnectionWorkflow(
   );
   await wf.condition(() => emailSent === true, "2 minutes");
 
+  setHandler(orderPlacedSignal, async ({ cartId }: OrderPlaced) => {
+    didBuy = await checkOrderPlaced(cartId, recommendedProducts);
+
+    if (didBuy) {
+      STEP = "purchase";
+    }
+  });
+
   if (emailSent) {
-    await sleep("10 seconds");
-    recommendedProductsWithLowerPrice = await recommendProductsWithLowerPrice(
-      workflowProps
-    );
+    await sleep("1 minutes");
 
-    recommendedProducts = recommendedProducts.concat(
-      recommendedProductsWithLowerPrice
-    );
+    if (!didBuy) {
+      recommendedProductsWithLowerPrice = await recommendProductsWithLowerPrice(
+        workflowProps
+      );
 
-    setHandler(orderPlacedSignal, async ({ cartId }: OrderPlaced) => {
-      didBuy = await checkOrderPlaced(cartId, recommendedProducts);
-
-      if (didBuy) {
-        STEP = "purchase";
-      }
-    });
+      recommendedProducts = recommendedProducts.concat(
+        recommendedProductsWithLowerPrice
+      );
+    }
 
     await wf.condition(() => didBuy === true, "2 hours");
   }

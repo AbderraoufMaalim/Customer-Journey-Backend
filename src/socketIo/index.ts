@@ -18,18 +18,13 @@ export async function checkWorkflowId(
     try {
       const handle = await client.workflow.start(firstConnectionWorkflow, {
         taskQueue: "hello-world",
-        // type inference works! args: [name: string]
         args: ["Temporals", socket.id],
-        // in practice, use a meaningful business ID, like customerId or transactionId
         workflowId: workflowId,
-        //workflowId: "workflow-" + nanoid(),
       });
       console.log(`Started workflow ${handle.workflowId}`);
       return handle;
     } catch (error) {
-      console.log("hna3");
-
-      console.log(error);
+      console.log({ error });
     }
   } else {
     let p;
@@ -44,7 +39,8 @@ export async function checkWorkflowId(
       console.log("hna6");
       console.log(error);
     }
-    if (p && p.history.events[0].workflowExecutionCompletedEventAttributes) {
+
+    if (p && !p.history.events[0].workflowExecutionCompletedEventAttributes) {
       try {
         const handle = await client.workflow.getHandle(payload);
         handle.signal(socketChangedSignal, {
@@ -52,8 +48,6 @@ export async function checkWorkflowId(
         });
         return handle;
       } catch (e) {
-        console.log("hna2");
-
         console.log(e);
       }
     } else {
@@ -63,16 +57,12 @@ export async function checkWorkflowId(
       try {
         const handle = await client.workflow.start(firstConnectionWorkflow, {
           taskQueue: "hello-world",
-          // type inference works! args: [name: string]
           args: ["Temporals", socket.id],
-          // in practice, use a meaningful business ID, like customerId or transactionId
           workflowId: workflowId,
-          //workflowId: "workflow-" + nanoid(),
         });
-        console.log(`Started workflow ${handle.workflowId}`);
+        console.log(`Started workflow2  ${handle.workflowId}`);
         return handle;
       } catch (error) {
-        console.log("hna1");
         console.log(error);
       }
     }
@@ -85,22 +75,97 @@ export async function getCustomerWorkflowId(
   client: Client,
   socket: Socket
 ) {
+  let customerWorkflowId;
+  let customer: Customer;
+  const CustomerRepository = dataSource.getRepository(Customer);
   try {
-    const CustomerRepository = dataSource.getRepository(Customer);
-    const customer = await CustomerRepository.findOne({
+    customer = await CustomerRepository.findOne({
       where: {
         email: email,
       },
     });
-    socket.emit("set-workflow-id", {
-      workflowId: customer.workflowId,
-    });
 
-    const handle = await client.workflow.getHandle(customer.workflowId);
-    return handle;
+    customerWorkflowId = customer.workflowId;
   } catch (error) {
     console.log(error);
   }
+
+  if (customerWorkflowId) {
+    let workflowHistory;
+    try {
+      workflowHistory =
+        await client.workflowService.getWorkflowExecutionHistoryReverse({
+          namespace: "default",
+          execution: {
+            workflowId: customerWorkflowId,
+          },
+        });
+    } catch (error) {
+      console.log(error);
+    }
+
+    if (
+      workflowHistory &&
+      !workflowHistory.history.events[0]
+        .workflowExecutionCompletedEventAttributes
+    ) {
+      try {
+        const handle = await client.workflow.getHandle(customerWorkflowId);
+        handle.signal(socketChangedSignal, {
+          changedSocketId: socket.id,
+        });
+
+        socket.emit("set-workflow-id", {
+          workflowId: customerWorkflowId,
+        });
+        //
+        return handle;
+      } catch (error) {
+        console.log(error);
+      }
+    } else {
+      customerWorkflowId = "workflow-" + nanoid();
+      socket.emit("set-workflow-id", { workflowId: customerWorkflowId });
+
+      try {
+        const handle = await client.workflow.start(firstConnectionWorkflow, {
+          taskQueue: "hello-world",
+          args: ["Temporals", socket.id],
+          workflowId: customerWorkflowId,
+        });
+        console.log(`Started workflow  ${handle.workflowId}`);
+        customer.workflowId = customerWorkflowId;
+        await CustomerRepository.save(customer);
+        return handle;
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  } else {
+    customerWorkflowId = "workflow-" + nanoid();
+    socket.emit("set-workflow-id", { workflowId: customerWorkflowId });
+
+    try {
+      const handle = await client.workflow.start(firstConnectionWorkflow, {
+        taskQueue: "hello-world",
+        args: ["Temporals", socket.id],
+        workflowId: customerWorkflowId,
+      });
+      console.log(`Started workflow  ${handle.workflowId}`);
+      customer.workflowId = customerWorkflowId;
+      await CustomerRepository.save(customer);
+      return handle;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  socket.emit("set-workflow-id", {
+    workflowId: customerWorkflowId,
+  });
+
+  const handle = await client.workflow.getHandle(customerWorkflowId);
+  return handle;
 }
 
 export async function getNewWorkflowId(socket: Socket, client: Client) {
